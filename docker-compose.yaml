@@ -1,0 +1,54 @@
+version: "3"
+
+volumes:
+  redis-data: {}
+
+networks:
+  backend:
+
+services:
+
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - ${REDIS_PORT}:${REDIS_PORT}
+    expose:
+      - ${REDIS_PORT}
+    volumes:
+      - type: volume
+        source: redis-data
+        target: /data
+    restart: always
+    networks:
+      - backend
+
+  proxy:
+    build:
+      context: ./proxy
+      dockerfile: Dockerfile
+    container_name: proxy
+    ports:
+      - ${PROXY_PORT}:${PROXY_PORT}
+    environment:
+      REDIS_PORT: ${REDIS_PORT}
+      PROXY_PORT: ${PROXY_PORT}
+      CACHE_CAPACITY: ${CACHE_CAPACITY}
+      CACHE_EXPIRY_TIME: ${CACHE_EXPIRY_TIME}
+    depends_on:
+      - redis
+    networks:
+      - backend
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - ${FRONT_APP_PORT}:${FRONT_APP_PORT}
+    environment:
+      NODE_ENV: production
+      PROXY_PORT: ${PROXY_PORT}
+    depends_on:
+      - proxy
